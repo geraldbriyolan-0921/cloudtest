@@ -18,7 +18,7 @@ provider "google" {
 # ---------------------
 
 resource "google_service_account" "service_account" {
-  account_id   = "terraform-service"
+  account_id   = "service-account-17-march"
   display_name = "Service Account for test"
 }
 
@@ -33,7 +33,6 @@ resource "google_project_iam_member" "role" {
     "CloudSQLInstanceManager" = "projects/amadis-gcp/roles/CloudSQLInstanceManager"
     "BigQueryJobUser"         = "roles/bigquery.jobUser"
     "BigQueryResourceViewer"  = "roles/bigquery.resourceViewer"
-    "BillingProjectManager"   = "roles/billing.projectManager"
     "CloudBuildEditor"        = "roles/cloudbuild.builds.editor"
     "CloudFunctionsInvoker"   = "roles/cloudfunctions.invoker"
     "CloudFunctionsViewer"    = "roles/cloudfunctions.viewer"
@@ -57,14 +56,14 @@ resource "google_project_iam_member" "role" {
 # ---------------------
 
 resource "google_compute_network" "final_test_vpc" {
-  name                    = "terraform-vpc"
+  name                    = "vpc-17-march"
   auto_create_subnetworks = false
   mtu                     = 1460
   routing_mode            = "REGIONAL"
 }
 
 resource "google_compute_subnetwork" "subnet1" {
-  name                     = "terraform-subnet"
+  name                     = "subnet-17-march"
   ip_cidr_range            = "10.0.10.0/24"
   network                  = google_compute_network.final_test_vpc.id
   region                   = var.region
@@ -77,7 +76,7 @@ resource "google_compute_subnetwork" "subnet1" {
 # ---------------------
 
 resource "google_compute_global_address" "final_testment" {
-  name          = "terraform-peering"
+  name          = "vpc-peering-17-march"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = 24
@@ -97,7 +96,7 @@ resource "google_service_networking_connection" "private_vpc_peering" {
 
 # Allow SSH
 resource "google_compute_firewall" "allow_ssh" {
-  name    = "allow-ssh-terraform"
+  name    = "allow-ssh-17-march"
   network = google_compute_network.final_test_vpc.name
 
   allow {
@@ -111,7 +110,7 @@ resource "google_compute_firewall" "allow_ssh" {
 
 # Allow Custom Traffic (TCP 5432)
 resource "google_compute_firewall" "allow_custom" {
-  name    = "allow-custom-terraform"
+  name    = "allow-custom-17-march"
   network = google_compute_network.final_test_vpc.name
 
   allow {
@@ -124,7 +123,7 @@ resource "google_compute_firewall" "allow_custom" {
 }
 
 resource "google_compute_firewall" "allow_http" {
-  name    = "allow-http-terraform"
+  name    = "allow-http-17-march"
   network = google_compute_network.final_test_vpc.name
 
   allow {
@@ -138,7 +137,7 @@ resource "google_compute_firewall" "allow_http" {
 }
 
 resource "google_compute_firewall" "allow_https" {
-  name    = "allow-https-terraform"
+  name    = "allow-https-17-march"
   network = google_compute_network.final_test_vpc.name
 
   allow {
@@ -157,7 +156,7 @@ resource "google_compute_firewall" "allow_https" {
 # ---------------------
 
 resource "google_compute_address" "static_external_ip" {
-  name         = "static-external-terraform"
+  name         = "static-external-ip-17-march"
   region       = var.region
   address_type = "EXTERNAL"
   network_tier = "PREMIUM"
@@ -168,7 +167,7 @@ resource "google_compute_address" "static_external_ip" {
 # ---------------------
 
 resource "google_cloud_run_v2_service" "cloud_run" {
-  name     = "cloud-run-function-terraform"
+  name     = "cloud-run-function-17-march"
   location = var.region
   template {
     containers {
@@ -216,7 +215,7 @@ resource "google_cloud_run_service_iam_policy" "no_unauth" {
 
 resource "google_sql_database_instance" "clouddb" {
   depends_on       = [google_service_networking_connection.private_vpc_peering]
-  name             = "sql-database-terraform"
+  name             = "sql-database-17-march"
   database_version = "POSTGRES_14"
   region           = var.region
 
@@ -267,7 +266,7 @@ resource "google_sql_user" "default" {
 # ---------------------
 
 resource "google_compute_instance" "ajay-deployment-test" {
-  name         = "compute-engine-terraform"
+  name         = "compute-engine-17-march"
   machine_type = "n4-highcpu-8"
   zone         = "us-central1-a"
 

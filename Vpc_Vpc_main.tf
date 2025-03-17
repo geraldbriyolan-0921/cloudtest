@@ -56,14 +56,14 @@ resource "google_project_iam_member" "role" {
 # ---------------------
 
 resource "google_compute_network" "vpc_network" {
-  name                    = "vpc-testing"
+  name                    = "vpc-testing-demo"
   auto_create_subnetworks = false
   mtu                     = 1460
   routing_mode            = "REGIONAL"
 }
 
 resource "google_compute_subnetwork" "subnet" {
-  name                     = "subnet-testing"
+  name                     = "subnet-testing-demo"
   ip_cidr_range            = "10.0.10.0/24"
   network                  = google_compute_network.vpc_network.id
   region                   = var.region
@@ -76,7 +76,7 @@ resource "google_compute_subnetwork" "subnet" {
 # ---------------------
 
 resource "google_compute_global_address" "vpc_peering" {
-  name          = "vpc-peering-testing"
+  name          = "vpc-peering-testing-demo"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = 24
@@ -96,7 +96,7 @@ resource "google_service_networking_connection" "private_vpc_peering" {
 
 # Allow SSH
 resource "google_compute_firewall" "allow_ssh" {
-  name    = "allow-ssh-testing"
+  name    = "allow-ssh-testing-demo"
   network = google_compute_network.vpc_network.name
 
   allow {
@@ -110,7 +110,7 @@ resource "google_compute_firewall" "allow_ssh" {
 
 # Allow Custom Traffic (TCP 5432)
 resource "google_compute_firewall" "allow_custom" {
-  name    = "allow-custom-testing"
+  name    = "allow-custom-testing-demo"
   network = google_compute_network.vpc_network.name
 
   allow {
@@ -123,7 +123,7 @@ resource "google_compute_firewall" "allow_custom" {
 }
 
 resource "google_compute_firewall" "allow_http" {
-  name    = "allow-http-testing"
+  name    = "allow-http-testing-demo"
   network = google_compute_network.vpc_network.name
 
   allow {
@@ -137,7 +137,7 @@ resource "google_compute_firewall" "allow_http" {
 }
 
 resource "google_compute_firewall" "allow_https" {
-  name    = "allow-https-testing"
+  name    = "allow-https-testing-demo"
   network = google_compute_network.vpc_network.name
 
   allow {
@@ -156,7 +156,7 @@ resource "google_compute_firewall" "allow_https" {
 # ---------------------
 
 resource "google_compute_address" "static_external_ip" {
-  name         = "static-external-testing"
+  name         = "static-external-testing-demo"
   region       = var.region
   address_type = "EXTERNAL"
   network_tier = "PREMIUM"
@@ -167,7 +167,7 @@ resource "google_compute_address" "static_external_ip" {
 # ---------------------
 
 resource "google_cloud_run_v2_service" "cloud_run_function" {
-  name     = "cloud-run-function-testing"
+  name     = "cloud-run-function-testing-demo"
   location = var.region
   template {
     containers {
@@ -215,7 +215,7 @@ resource "google_cloud_run_service_iam_policy" "no_unauth" {
 
 resource "google_sql_database_instance" "sql_database" {
   depends_on       = [google_service_networking_connection.private_vpc_peering]
-  name             = "sql-database-testing"
+  name             = "sql-database-testing-demo"
   database_version = "POSTGRES_14"
   region           = var.region
 

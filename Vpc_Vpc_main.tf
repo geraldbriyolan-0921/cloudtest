@@ -18,7 +18,7 @@ provider "google" {
 # ---------------------
 
 resource "google_service_account" "service_account" {
-  account_id   = "service-account-17-march"
+  account_id   = "service-account-testing"
   display_name = "Service Account for test"
 }
 
@@ -55,17 +55,17 @@ resource "google_project_iam_member" "role" {
 # VPC NETWORK & SUBNETS
 # ---------------------
 
-resource "google_compute_network" "final_test_vpc" {
-  name                    = "vpc-17-march"
+resource "google_compute_network" "vpc_network" {
+  name                    = "vpc-testing"
   auto_create_subnetworks = false
   mtu                     = 1460
   routing_mode            = "REGIONAL"
 }
 
-resource "google_compute_subnetwork" "subnet1" {
-  name                     = "subnet-17-march"
+resource "google_compute_subnetwork" "subnet" {
+  name                     = "subnet-testing"
   ip_cidr_range            = "10.0.10.0/24"
-  network                  = google_compute_network.final_test_vpc.id
+  network                  = google_compute_network.vpc_network.id
   region                   = var.region
   private_ip_google_access = true
   stack_type               = "IPV4_ONLY"
@@ -75,19 +75,19 @@ resource "google_compute_subnetwork" "subnet1" {
 # VPC PEERING
 # ---------------------
 
-resource "google_compute_global_address" "final_testment" {
-  name          = "vpc-peering-17-march"
+resource "google_compute_global_address" "vpc_peering" {
+  name          = "vpc-peering-testing"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = 24
-  network       = google_compute_network.final_test_vpc.id
+  network       = google_compute_network.vpc_network.id
   address       = "10.0.20.0"
 }
 
 resource "google_service_networking_connection" "private_vpc_peering" {
-  network                 = google_compute_network.final_test_vpc.id
+  network                 = google_compute_network.vpc_network.id
   service                 = "servicenetworking.googleapis.com"
-  reserved_peering_ranges = [google_compute_global_address.final_testment.name]
+  reserved_peering_ranges = [google_compute_global_address.vpc_peering.name]
 }
 
 # ---------------------
@@ -96,8 +96,8 @@ resource "google_service_networking_connection" "private_vpc_peering" {
 
 # Allow SSH
 resource "google_compute_firewall" "allow_ssh" {
-  name    = "allow-ssh-17-march"
-  network = google_compute_network.final_test_vpc.name
+  name    = "allow-ssh-testing"
+  network = google_compute_network.vpc_network.name
 
   allow {
     protocol = "tcp"
@@ -110,8 +110,8 @@ resource "google_compute_firewall" "allow_ssh" {
 
 # Allow Custom Traffic (TCP 5432)
 resource "google_compute_firewall" "allow_custom" {
-  name    = "allow-custom-17-march"
-  network = google_compute_network.final_test_vpc.name
+  name    = "allow-custom-testing"
+  network = google_compute_network.vpc_network.name
 
   allow {
     protocol = "tcp"
@@ -123,8 +123,8 @@ resource "google_compute_firewall" "allow_custom" {
 }
 
 resource "google_compute_firewall" "allow_http" {
-  name    = "allow-http-17-march"
-  network = google_compute_network.final_test_vpc.name
+  name    = "allow-http-testing"
+  network = google_compute_network.vpc_network.name
 
   allow {
     protocol = "tcp"
@@ -137,8 +137,8 @@ resource "google_compute_firewall" "allow_http" {
 }
 
 resource "google_compute_firewall" "allow_https" {
-  name    = "allow-https-17-march"
-  network = google_compute_network.final_test_vpc.name
+  name    = "allow-https-testing"
+  network = google_compute_network.vpc_network.name
 
   allow {
     protocol = "tcp"
@@ -156,7 +156,7 @@ resource "google_compute_firewall" "allow_https" {
 # ---------------------
 
 resource "google_compute_address" "static_external_ip" {
-  name         = "static-external-ip-17-march"
+  name         = "static-external-testing"
   region       = var.region
   address_type = "EXTERNAL"
   network_tier = "PREMIUM"
@@ -166,12 +166,12 @@ resource "google_compute_address" "static_external_ip" {
 # CLOUD RUN FUNCTION
 # ---------------------
 
-resource "google_cloud_run_v2_service" "cloud_run" {
-  name     = "cloud-run-function-17-march"
+resource "google_cloud_run_v2_service" "cloud_run_function" {
+  name     = "cloud-run-function-testing"
   location = var.region
   template {
     containers {
-      image = "us-central1-docker.pkg.dev/amadis-gcp/cloud-app/app@sha256:5ce1433eb01290b0e0500309dfb920057102f273ad869b9bf1de272c8b7ecca5"
+      image = "us-central1-docker.pkg.dev/amadis-gcp/cloud-app-test/cloud-app@sha256:23c1e7dad1f50ca46c986f64c71f174efff1a246be4ed9f0e143b472a4c408fc"
       ports {
         container_port = 8080
       }
@@ -188,8 +188,8 @@ resource "google_cloud_run_v2_service" "cloud_run" {
     timeout = "3600s"
     vpc_access {
       network_interfaces {
-        network    = google_compute_network.final_test_vpc.id
-        subnetwork = google_compute_subnetwork.subnet1.id
+        network    = google_compute_network.vpc_network.id
+        subnetwork = google_compute_subnetwork.subnet.id
       }
     }
     service_account = google_service_account.service_account.email
@@ -201,8 +201,8 @@ resource "google_cloud_run_v2_service" "cloud_run" {
 }
 
 resource "google_cloud_run_service_iam_policy" "no_unauth" {
-  location = google_cloud_run_v2_service.cloud_run.location
-  service  = google_cloud_run_v2_service.cloud_run.name
+  location = google_cloud_run_v2_service.cloud_run_function.location
+  service  = google_cloud_run_v2_service.cloud_run_function.name
 
   policy_data = jsonencode({
     bindings = []
@@ -213,9 +213,9 @@ resource "google_cloud_run_service_iam_policy" "no_unauth" {
 # CLOUD SQL POSTGRES INSTANCE
 # ---------------------
 
-resource "google_sql_database_instance" "clouddb" {
+resource "google_sql_database_instance" "sql_database" {
   depends_on       = [google_service_networking_connection.private_vpc_peering]
-  name             = "sql-database-17-march"
+  name             = "sql-database-testing"
   database_version = "POSTGRES_14"
   region           = var.region
 
@@ -231,7 +231,7 @@ resource "google_sql_database_instance" "clouddb" {
 
     ip_configuration {
       ipv4_enabled    = false
-      private_network = google_compute_network.final_test_vpc.id
+      private_network = google_compute_network.vpc_network.id
     }
 
     maintenance_window {
@@ -249,7 +249,7 @@ resource "google_sql_database_instance" "clouddb" {
   }
 }
 
-resource "random_password" "sql_password" {
+resource "random_password" "sql_database_password" {
   length           = 16
   special          = true
   override_special = "_%@"
@@ -257,22 +257,22 @@ resource "random_password" "sql_password" {
 
 resource "google_sql_user" "default" {
   name     = "cloudcadiadmin"
-  instance = google_sql_database_instance.clouddb.name
-  password = random_password.sql_password.result
+  instance = google_sql_database_instance.sql_database.name
+  password = random_password.sql_database_password.result
 }
 
 # ---------------------
 # COMPUTE ENGINE VM WITH CONTAINER
 # ---------------------
 
-resource "google_compute_instance" "ajay-deployment-test" {
-  name         = "compute-engine-17-march"
+resource "google_compute_instance" "compute_instance" {
+  name         = "compute-engine-testing"
   machine_type = "n4-highcpu-8"
   zone         = "us-central1-a"
 
   boot_disk {
     auto_delete = true
-    device_name = "ajay-deployment-test"
+    device_name = "compute_instance"
 
     initialize_params {
       image = "projects/cos-cloud/global/images/cos-105-17412-535-63"
@@ -293,17 +293,17 @@ resource "google_compute_instance" "ajay-deployment-test" {
     gce-container-declaration = <<-EOT
       spec:
         containers:
-        - name: ajay-deployment-test-20250313-101506
+        - name: compute_instance-20250313-101506
           image: us-central1-docker.pkg.dev/amadis-gcp/ajay-repos/cloudcadi-v4:latest
           env:
           - name: POSTGRESQLCONNSTR_DB_HOST
-            value: ${google_sql_database_instance.clouddb.private_ip_address}
+            value: ${google_sql_database_instance.sql_database.private_ip_address}
           - name: POSTGRESQLCONNSTR_DB_NAME
             value: cloudcadidb
           - name: POSTGRESQLCONNSTR_DB_USER
             value: ${google_sql_user.default.name}
           - name: POSTGRESQLCONNSTR_DB_PASS
-            value: ${random_password.sql_password.result}
+            value: ${random_password.sql_database_password.result}
           - name: POSTGRESQLCONNSTR_SSL_STATUS
             value: "true"
           - name: FRONTEND_URL
@@ -318,7 +318,7 @@ resource "google_compute_instance" "ajay-deployment-test" {
 
 
   network_interface {
-    subnetwork = google_compute_subnetwork.subnet1.id
+    subnetwork = google_compute_subnetwork.subnet.id
 
     access_config {
       nat_ip       = google_compute_address.static_external_ip.address
@@ -360,7 +360,7 @@ output "service_account_email" {
 }
 
 output "vpc_id" {
-  value = google_compute_network.final_test_vpc.id
+  value = google_compute_network.vpc_network.id
 }
 
 output "private_vpc_peering_id" {
@@ -368,16 +368,16 @@ output "private_vpc_peering_id" {
 }
 
 output "sql_instance_name" {
-  value = google_sql_database_instance.clouddb.name
+  value = google_sql_database_instance.sql_database.name
 }
 
 output "sql_user_password" {
-  value     = random_password.sql_password.result
+  value     = random_password.sql_database_password.result
   sensitive = true
 }
 
 output "cloud_run_name" {
-  value = google_cloud_run_v2_service.cloud_run.name
+  value = google_cloud_run_v2_service.cloud_run_function.name
 }
 
 variable "project_id" {}

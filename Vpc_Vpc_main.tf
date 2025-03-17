@@ -18,8 +18,8 @@ provider "google" {
 # ---------------------
 
 resource "google_service_account" "service_account" {
-  account_id   = "service-account-testing"
-  display_name = "Service Account for test"
+  account_id   = "service-account"
+  display_name = "Service Account for Cloud Deployment"
 }
 
 # ---------------------
@@ -56,14 +56,14 @@ resource "google_project_iam_member" "role" {
 # ---------------------
 
 resource "google_compute_network" "vpc_network" {
-  name                    = "vpc-testing-demo"
+  name                    = "vpc-network"
   auto_create_subnetworks = false
   mtu                     = 1460
   routing_mode            = "REGIONAL"
 }
 
 resource "google_compute_subnetwork" "subnet" {
-  name                     = "subnet-testing-demo"
+  name                     = "subnet"
   ip_cidr_range            = "10.0.10.0/24"
   network                  = google_compute_network.vpc_network.id
   region                   = var.region
@@ -76,7 +76,7 @@ resource "google_compute_subnetwork" "subnet" {
 # ---------------------
 
 resource "google_compute_global_address" "vpc_peering" {
-  name          = "vpc-peering-testing-demo"
+  name          = "vpc-peering"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = 24
@@ -96,7 +96,7 @@ resource "google_service_networking_connection" "private_vpc_peering" {
 
 # Allow SSH
 resource "google_compute_firewall" "allow_ssh" {
-  name    = "allow-ssh-testing-demo"
+  name    = "allow-ssh"
   network = google_compute_network.vpc_network.name
 
   allow {
@@ -110,7 +110,7 @@ resource "google_compute_firewall" "allow_ssh" {
 
 # Allow Custom Traffic (TCP 5432)
 resource "google_compute_firewall" "allow_custom" {
-  name    = "allow-custom-testing-demo"
+  name    = "allow-custom"
   network = google_compute_network.vpc_network.name
 
   allow {
@@ -123,7 +123,7 @@ resource "google_compute_firewall" "allow_custom" {
 }
 
 resource "google_compute_firewall" "allow_http" {
-  name    = "allow-http-testing-demo"
+  name    = "allow-http"
   network = google_compute_network.vpc_network.name
 
   allow {
@@ -137,7 +137,7 @@ resource "google_compute_firewall" "allow_http" {
 }
 
 resource "google_compute_firewall" "allow_https" {
-  name    = "allow-https-testing-demo"
+  name    = "allow-https"
   network = google_compute_network.vpc_network.name
 
   allow {
@@ -156,7 +156,7 @@ resource "google_compute_firewall" "allow_https" {
 # ---------------------
 
 resource "google_compute_address" "static_external_ip" {
-  name         = "static-external-testing-demo"
+  name         = "static-external-ip"
   region       = var.region
   address_type = "EXTERNAL"
   network_tier = "PREMIUM"
@@ -167,7 +167,7 @@ resource "google_compute_address" "static_external_ip" {
 # ---------------------
 
 resource "google_cloud_run_v2_service" "cloud_run_function" {
-  name     = "cloud-run-function-testing-demo"
+  name     = "cloud-run-function"
   location = var.region
   template {
     containers {
@@ -215,7 +215,7 @@ resource "google_cloud_run_service_iam_policy" "no_unauth" {
 
 resource "google_sql_database_instance" "sql_database" {
   depends_on       = [google_service_networking_connection.private_vpc_peering]
-  name             = "sql-database-testing-demo"
+  name             = "sql-database"
   database_version = "POSTGRES_14"
   region           = var.region
 
@@ -256,7 +256,7 @@ resource "random_password" "sql_database_password" {
 }
 
 resource "google_sql_user" "default" {
-  name     = "cloudcadiadmin"
+  name     = "cloud-admin"
   instance = google_sql_database_instance.sql_database.name
   password = random_password.sql_database_password.result
 }
@@ -266,7 +266,7 @@ resource "google_sql_user" "default" {
 # ---------------------
 
 resource "google_compute_instance" "compute_instance" {
-  name         = "compute-engine-testing"
+  name         = "compute-engine"
   machine_type = "n4-highcpu-8"
   zone         = "us-central1-a"
 
@@ -299,7 +299,7 @@ resource "google_compute_instance" "compute_instance" {
           - name: POSTGRESQLCONNSTR_DB_HOST
             value: ${google_sql_database_instance.sql_database.private_ip_address}
           - name: POSTGRESQLCONNSTR_DB_NAME
-            value: cloudcadidb
+            value: cloud-database
           - name: POSTGRESQLCONNSTR_DB_USER
             value: ${google_sql_user.default.name}
           - name: POSTGRESQLCONNSTR_DB_PASS

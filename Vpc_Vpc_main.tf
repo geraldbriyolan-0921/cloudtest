@@ -18,8 +18,8 @@ provider "google" {
 # ---------------------
 
 resource "google_service_account" "service_account" {
-  account_id   = "service-account"
-  display_name = "Service Account for Cloud Deployment"
+  account_id   = "cloudcadi-user-march"
+  display_name = "Service Account for CloudCadi Deployment"
 }
 
 # ---------------------
@@ -56,14 +56,14 @@ resource "google_project_iam_member" "role" {
 # ---------------------
 
 resource "google_compute_network" "vpc_network" {
-  name                    = "vpc-network"
+  name                    = "cloudcadi-vpc-network"
   auto_create_subnetworks = false
   mtu                     = 1460
   routing_mode            = "REGIONAL"
 }
 
 resource "google_compute_subnetwork" "subnet" {
-  name                     = "subnet"
+  name                     = "cloudcadi-subnet"
   ip_cidr_range            = "10.0.10.0/24"
   network                  = google_compute_network.vpc_network.id
   region                   = var.region
@@ -76,7 +76,7 @@ resource "google_compute_subnetwork" "subnet" {
 # ---------------------
 
 resource "google_compute_global_address" "vpc_peering" {
-  name          = "vpc-peering"
+  name          = "cloudcadi-vpc-peering"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = 24
@@ -96,7 +96,7 @@ resource "google_service_networking_connection" "private_vpc_peering" {
 
 # Allow SSH
 resource "google_compute_firewall" "allow_ssh" {
-  name    = "allow-ssh"
+  name    = "cloudcadi-allow-ssh"
   network = google_compute_network.vpc_network.name
 
   allow {
@@ -105,12 +105,11 @@ resource "google_compute_firewall" "allow_ssh" {
   }
 
   source_ranges = ["0.0.0.0/0"]
-  priority      = 1000
 }
 
 # Allow Custom Traffic (TCP 5432)
 resource "google_compute_firewall" "allow_custom" {
-  name    = "allow-custom"
+  name    = "cloudcadi-allow-custom"
   network = google_compute_network.vpc_network.name
 
   allow {
@@ -118,12 +117,11 @@ resource "google_compute_firewall" "allow_custom" {
     ports    = ["5432"]
   }
 
-  source_ranges = ["0.0.0.0/0"] # Allows traffic from all sources
-  priority      = 1000
+  source_ranges = ["0.0.0.0/0"]
 }
 
 resource "google_compute_firewall" "allow_http" {
-  name    = "allow-http"
+  name    = "cloudcadi-allow-http"
   network = google_compute_network.vpc_network.name
 
   allow {
@@ -132,12 +130,11 @@ resource "google_compute_firewall" "allow_http" {
   }
 
   source_ranges = ["0.0.0.0/0"]
-  priority      = 1000
   target_tags   = ["http-server"]
 }
 
 resource "google_compute_firewall" "allow_https" {
-  name    = "allow-https"
+  name    = "cloudcadi-allow-https"
   network = google_compute_network.vpc_network.name
 
   allow {
@@ -146,7 +143,6 @@ resource "google_compute_firewall" "allow_https" {
   }
 
   source_ranges = ["0.0.0.0/0"]
-  priority      = 1000
   target_tags   = ["https-server"]
 }
 
@@ -156,10 +152,10 @@ resource "google_compute_firewall" "allow_https" {
 # ---------------------
 
 resource "google_compute_address" "static_external_ip" {
-  name         = "static-external-ip"
+  name         = "cloudcadi-static-external-ip"
   region       = var.region
   address_type = "EXTERNAL"
-  network_tier = "PREMIUM"
+  network_tier = "STANDARD"
 }
 
 # ---------------------
@@ -167,7 +163,7 @@ resource "google_compute_address" "static_external_ip" {
 # ---------------------
 
 resource "google_cloud_run_v2_service" "cloud_run_function" {
-  name     = "cloud-run-function"
+  name     = "cloudcadi-cloud-run-function"
   location = var.region
   template {
     containers {
@@ -215,7 +211,7 @@ resource "google_cloud_run_service_iam_policy" "no_unauth" {
 
 resource "google_sql_database_instance" "sql_database" {
   depends_on       = [google_service_networking_connection.private_vpc_peering]
-  name             = "sql-database"
+  name             = "cloudcadi-sql-database"
   database_version = "POSTGRES_14"
   region           = var.region
 
@@ -238,6 +234,10 @@ resource "google_sql_database_instance" "sql_database" {
       day  = 1
       hour = 0
     }
+
+    location_preference {
+      zone = var.zone
+    }
   }
 
   deletion_protection = true
@@ -256,7 +256,7 @@ resource "random_password" "sql_database_password" {
 }
 
 resource "google_sql_user" "default" {
-  name     = "cloud-admin"
+  name     = "cloudcadi-admin"
   instance = google_sql_database_instance.sql_database.name
   password = random_password.sql_database_password.result
 }
@@ -266,9 +266,9 @@ resource "google_sql_user" "default" {
 # ---------------------
 
 resource "google_compute_instance" "compute_instance" {
-  name         = "compute-engine"
+  name         = "cloudcadi-compute-engine"
   machine_type = "n4-highcpu-8"
-  zone         = "us-central1-a"
+  zone         = var.zone
 
   boot_disk {
     auto_delete = true
@@ -286,7 +286,7 @@ resource "google_compute_instance" "compute_instance" {
   enable_display      = false
 
   labels = {
-    goog-ec-src = "vm_add-tf"
+    goog-ec-src = "cloudcadi"
   }
 
   metadata = {
@@ -299,7 +299,7 @@ resource "google_compute_instance" "compute_instance" {
           - name: POSTGRESQLCONNSTR_DB_HOST
             value: ${google_sql_database_instance.sql_database.private_ip_address}
           - name: POSTGRESQLCONNSTR_DB_NAME
-            value: cloud-database
+            value: cloudcadi-database
           - name: POSTGRESQLCONNSTR_DB_USER
             value: ${google_sql_user.default.name}
           - name: POSTGRESQLCONNSTR_DB_PASS
@@ -322,7 +322,7 @@ resource "google_compute_instance" "compute_instance" {
 
     access_config {
       nat_ip       = google_compute_address.static_external_ip.address
-      network_tier = "PREMIUM"
+      network_tier = "STANDARD"
     }
 
     nic_type    = "GVNIC"
